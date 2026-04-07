@@ -81,8 +81,10 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 
 	s.sendHistory(conn)
 
+	// Внутри цикла for в функции handleWS
 	for {
 		var msg map[string]string
+		// Теперь сообщение от Python прилетает в виде {"content": "...", "sender_id": "..."}
 		if err := conn.ReadJSON(&msg); err != nil {
 			s.mu.Lock()
 			delete(s.clients, conn)
@@ -90,11 +92,13 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
+		// Сохраняем в базу (только контент, ID сессии нам там не нужен)
 		_, err := s.db.Exec("INSERT INTO messages (content) VALUES ($1)", msg["content"])
 		if err != nil {
-			fmt.Println("Ошибка записи в БД:", err)
+			fmt.Println("DB Error:", err)
 		}
 
+		// Рассылаем ВСЕМ сообщение целиком (вместе с sender_id)
 		s.broadcast(msg)
 	}
 }
