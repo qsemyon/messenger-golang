@@ -2,58 +2,63 @@ import flet as ft
 import asyncio
 import websockets
 import json
+import uuid # Для генерации уникального ID
 
 async def main(page: ft.Page):
+    # Генерируем уникальный ID для этого открытого окна
+    my_id = str(uuid.uuid4())
+    
     page.title = "VibeChat"
-    page.theme_mode = "dark"
     page.window_width = 400
     page.window_height = 700
+    
     chat_history = ft.ListView(expand=True, spacing=10, auto_scroll=True)
     state = {"ws": None}
 
     async def listen_server():
-        ws_url = "ws://localhost:8080/ws"
         try:
-            async with websockets.connect(ws_url) as websocket:
+            async with websockets.connect("ws://localhost:8080/ws") as websocket:
                 state["ws"] = websocket
                 while True:
                     message = await websocket.recv()
                     data = json.loads(message)
+                    
+                    # ГЛАВНАЯ ЛОГИКА: свой или чужой?
+                    is_own = data.get("sender_id") == my_id
+                    
                     chat_history.controls.append(
                         ft.Row([
                             ft.Container(
-                                content=ft.Text(data["content"]),
-                                bgcolor="grey800",
-                                padding=10,
-                                border_radius=10
+                                content=ft.Text(data["content"], color="white"),
+                                bgcolor="blue700" if is_own else "grey800",
+                                padding=12,
+                                border_radius=15,
+                                # ФИКС ПЕРЕНОСА: ограничиваем ширину
+                                width=280, 
                             )
-                        ], alignment="start")
+                        ], alignment="end" if is_own else "start")
                     )
                     page.update()
-        except Exception as e:
-            print(f"WS Connection lost: {e}")
-            state["ws"] = None
+        except: pass
 
     async def send_click(e):
-        if not message_input.value: return
-        ws = state["ws"]
-        if ws:
-            try:
-                await ws.send(json.dumps({"content": message_input.value}))
-                message_input.value = ""
-                page.update()
-            except Exception as ex:
-                print(f"Send error: {ex}")
-    message_input = ft.TextField(
-        hint_text="Сообщение...", 
-        expand=True, 
-        on_submit=send_click
-    )
+        if not message_input.value or not state["ws"]: return
+        
+        # Отправляем и текст, и наш секретный ID
+        await state["ws"].send(json.dumps({
+            "content": message_input.value,
+            "sender_id": my_id
+        }))
+        message_input.value = ""
+        page.update()
 
+    message_input = ft.TextField(expand=True, on_submit=send_click, hint_text="Напиши что-нибудь...")
+    
+    # Используем Container как кнопку, раз IconButton багует
     send_button = ft.Container(
         content=ft.Icon("send", color="blue400"),
         on_click=send_click,
-        width=50, height=50, padding=10, ink=True
+        width=50, height=50, ink=True
     )
 
     page.add(
