@@ -1,32 +1,57 @@
 import flet as ft
+import asyncio
+import websockets
+import json
 
-def main(page: ft.Page):
+async def main(page: ft.Page):
     page.title = "VibeChat"
     page.theme_mode = "dark"
     page.window_width = 400
     page.window_height = 700
     
-    chat_history = ft.ListView(
-        expand=True,
-        spacing=10,
-        auto_scroll=True,
-        controls=[ft.Text("Чат запущен...", color="grey")]
-    )
+    chat_history = ft.ListView(expand=True, spacing=10, auto_scroll=True)
+    
+    # Ссылка на активный сокет
+    state = {"ws": None}
 
-    def send_click(e):
+    async def listen_server():
+        ws_url = "ws://localhost:8080/ws"
+        try:
+            async with websockets.connect(ws_url) as websocket:
+                state["ws"] = websocket # Сохраняем в обычный словарь
+                while True:
+                    message = await websocket.recv()
+                    data = json.loads(message)
+                    # Добавляем в чат
+                    chat_history.controls.append(
+                        ft.Row([
+                            ft.Container(
+                                content=ft.Text(data["content"]),
+                                bgcolor="grey800",
+                                padding=10,
+                                border_radius=10
+                            )
+                        ], alignment="start")
+                    )
+                    page.update()
+        except Exception as e:
+            print(f"WS Connection lost: {e}")
+            state["ws"] = None
+
+    async def send_click(e):
         if not message_input.value: return
-        chat_history.controls.append(
-            ft.Row([
-                ft.Container(
-                    content=ft.Text(message_input.value),
-                    bgcolor="blue700",
-                    padding=10,
-                    border_radius=10
-                )
-            ], alignment="end")
-        )
-        message_input.value = ""
-        page.update()
+        
+        ws = state["ws"]
+        if ws:
+            try:
+                await ws.send(json.dumps({"content": message_input.value}))
+                message_input.value = ""
+                # Обрати внимание: мы НЕ добавляем сообщение в ListView сами!
+                # Оно прилетит обратно от сервера через listen_server() 
+                # и отобразится у всех (включая тебя).
+                page.update()
+            except Exception as ex:
+                print(f"Send error: {ex}")
 
     message_input = ft.TextField(
         hint_text="Сообщение...", 
@@ -34,34 +59,21 @@ def main(page: ft.Page):
         on_submit=send_click
     )
 
-    # Заменяем заглушку на реальную кнопку
-    # В 0.8.4 пишем строго icon="send" (строкой)
-    # Делаем кнопку вручную через Container
-    # Ограничиваем кнопку фиксированным размером
     send_button = ft.Container(
         content=ft.Icon("send", color="blue400"),
         on_click=send_click,
-        padding=10,
-        ink=True,
-        border_radius=10,
-        # Жестко задаем размеры, чтобы не распирало
-        width=50,
-        height=50, 
+        width=50, height=50, padding=10, ink=True
     )
 
     page.add(
         ft.Column([
             chat_history,
-            # Добавляем vertical_alignment, чтобы кнопка не тянулась вверх-вниз
-            ft.Row([
-                message_input, 
-                send_button
-            ], vertical_alignment="center") 
+            ft.Row([message_input, send_button], vertical_alignment="center")
         ], expand=True)
     )
-
-
     
-    page.update()
+    # Запускаем прослушку в фоне
+    asyncio.create_task(listen_server())
 
+# Запуск
 ft.app(target=main)
