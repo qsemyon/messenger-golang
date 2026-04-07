@@ -2,13 +2,12 @@ import flet as ft
 import asyncio
 import websockets
 import json
-import uuid # Для генерации уникального ID
+import uuid
 
 async def main(page: ft.Page):
-    # Генерируем уникальный ID для этого открытого окна
     my_id = str(uuid.uuid4())
     
-    page.title = "VibeChat"
+    page.title = "Messenger"
     page.window_width = 400
     page.window_height = 700
     
@@ -23,7 +22,6 @@ async def main(page: ft.Page):
                     message = await websocket.recv()
                     data = json.loads(message)
                     
-                    # ГЛАВНАЯ ЛОГИКА: свой или чужой?
                     is_own = data.get("sender_id") == my_id
                     
                     chat_history.controls.append(
@@ -33,7 +31,6 @@ async def main(page: ft.Page):
                                 bgcolor="blue700" if is_own else "grey800",
                                 padding=12,
                                 border_radius=15,
-                                # ФИКС ПЕРЕНОСА: ограничиваем ширину
                                 width=280, 
                             )
                         ], alignment="end" if is_own else "start")
@@ -44,7 +41,6 @@ async def main(page: ft.Page):
     async def send_click(e):
         if not message_input.value or not state["ws"]: return
         
-        # Отправляем и текст, и наш секретный ID
         await state["ws"].send(json.dumps({
             "content": message_input.value,
             "sender_id": my_id
@@ -54,7 +50,6 @@ async def main(page: ft.Page):
 
     message_input = ft.TextField(expand=True, on_submit=send_click, hint_text="Напиши что-нибудь...")
     
-    # Используем Container как кнопку, раз IconButton багует
     send_button = ft.Container(
         content=ft.Icon("send", color="blue400"),
         on_click=send_click,
