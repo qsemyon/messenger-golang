@@ -1,10 +1,5 @@
 Stack:
-- Golang
-- Python Flet
+- Golang 1.26
+- Python 3.14 (Flet 0.84.0)
 - PostreSQL
 - Docker
-Версии
-Golang 1.21
-Python 3.14
-Flet 0.84
-Docker version 29.3.1, build c2be9cc
