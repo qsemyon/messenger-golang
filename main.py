@@ -8,21 +8,17 @@ async def main(page: ft.Page):
     page.theme_mode = "dark"
     page.window_width = 400
     page.window_height = 700
-    
     chat_history = ft.ListView(expand=True, spacing=10, auto_scroll=True)
-    
-    # Ссылка на активный сокет
     state = {"ws": None}
 
     async def listen_server():
         ws_url = "ws://localhost:8080/ws"
         try:
             async with websockets.connect(ws_url) as websocket:
-                state["ws"] = websocket # Сохраняем в обычный словарь
+                state["ws"] = websocket
                 while True:
                     message = await websocket.recv()
                     data = json.loads(message)
-                    # Добавляем в чат
                     chat_history.controls.append(
                         ft.Row([
                             ft.Container(
@@ -40,19 +36,14 @@ async def main(page: ft.Page):
 
     async def send_click(e):
         if not message_input.value: return
-        
         ws = state["ws"]
         if ws:
             try:
                 await ws.send(json.dumps({"content": message_input.value}))
                 message_input.value = ""
-                # Обрати внимание: мы НЕ добавляем сообщение в ListView сами!
-                # Оно прилетит обратно от сервера через listen_server() 
-                # и отобразится у всех (включая тебя).
                 page.update()
             except Exception as ex:
                 print(f"Send error: {ex}")
-
     message_input = ft.TextField(
         hint_text="Сообщение...", 
         expand=True, 
@@ -72,8 +63,6 @@ async def main(page: ft.Page):
         ], expand=True)
     )
     
-    # Запускаем прослушку в фоне
     asyncio.create_task(listen_server())
 
-# Запуск
 ft.app(target=main)
