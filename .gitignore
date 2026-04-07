@@ -1,0 +1,14 @@
+__pycache__/
+venv/
+.venv/
+*.pyc
+
+main
+/server/main
+go.sum.bak
+
+db_data/
+.env
+
+.DS_Store
+Thumbs.db
