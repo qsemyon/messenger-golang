@@ -6,7 +6,6 @@ env/
 *.pyo
 *.pyd
 .pytest_cache/
-build/
 
 main
 server/main
