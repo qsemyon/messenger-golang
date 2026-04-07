@@ -3,12 +3,9 @@ import flet as ft
 def main(page: ft.Page):
     page.title = "VibeChat"
     page.theme_mode = "dark"
-    
-    # Принудительно задаем размеры для стабильности в 0.8.4
     page.window_width = 400
     page.window_height = 700
     
-    # История чата (ListView заберет все свободное место)
     chat_history = ft.ListView(
         expand=True,
         spacing=10,
@@ -18,7 +15,6 @@ def main(page: ft.Page):
 
     def send_click(e):
         if not message_input.value: return
-        # Добавляем контейнер с текстом, чтобы Row не был пустым
         chat_history.controls.append(
             ft.Row([
                 ft.Container(
@@ -32,28 +28,40 @@ def main(page: ft.Page):
         message_input.value = ""
         page.update()
 
-    # Поле ввода с обработкой Enter (on_submit)
     message_input = ft.TextField(
         hint_text="Сообщение...", 
         expand=True, 
         on_submit=send_click
     )
 
-    # Заглушка вместо кнопки (пустое место шириной 50px)
-    button_placeholder = ft.Container(width=50)
+    # Заменяем заглушку на реальную кнопку
+    # В 0.8.4 пишем строго icon="send" (строкой)
+    # Делаем кнопку вручную через Container
+    # Ограничиваем кнопку фиксированным размером
+    send_button = ft.Container(
+        content=ft.Icon("send", color="blue400"),
+        on_click=send_click,
+        padding=10,
+        ink=True,
+        border_radius=10,
+        # Жестко задаем размеры, чтобы не распирало
+        width=50,
+        height=50, 
+    )
 
-    # Собираем интерфейс
     page.add(
         ft.Column([
             chat_history,
+            # Добавляем vertical_alignment, чтобы кнопка не тянулась вверх-вниз
             ft.Row([
                 message_input, 
-                button_placeholder
-            ])
+                send_button
+            ], vertical_alignment="center") 
         ], expand=True)
     )
+
+
     
     page.update()
 
-# Запуск через ft.app (наиболее стабильный для 0.8.4)
 ft.app(target=main)
